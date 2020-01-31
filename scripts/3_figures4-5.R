@@ -113,12 +113,18 @@ for(i in 1:10) {
 
 #elite ideology with neutrals, distribution within deciles
 
+medians <- ddply(all_decile_df, "decile", summarise, grp.median=median(ideology, na.rm = T))
+
+all_decile_df <- all_decile_df %>% inner_join(medians)
+
 #figure 5
 ggplot(all_decile_df, aes(x=ideology)) +
   geom_density(fill="snow3", alpha = 0.6, color = "snow3") +
-  theme_bw() +
-  facet_wrap(all_decile_df$decile, nrow = 5, scales = "free") +
+  facet_wrap(~decile, nrow = 5, scales = "free") +
+  geom_vline(aes(xintercept=grp.median, colour = "red")) +
+  geom_vline(xintercept=0, linetype = "dashed") +
   scale_fill_gradient(low="white", high="black") +
+  theme_bw() +
   theme(legend.position = "none")
 
 

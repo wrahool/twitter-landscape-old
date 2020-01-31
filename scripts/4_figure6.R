@@ -53,11 +53,19 @@ for(class in classes) {
 
 all_class_elites_ideologies$class_2 = gsub(pattern = " ", "", all_class_elites_ideologies$class)
 
+library(tidyverse)
+medians <- ddply(all_class_elites_ideologies, "class", summarise, grp.median=median(corrected_ideology, na.rm = T))
+
+all_class_elites_ideologies %>% inner_join(medians) -> all_class_elites_ideologies
+
 # weighted elite distribution within genres
 ggplot(all_class_elites_ideologies, aes(x=corrected_ideology)) +
   geom_density(fill = "snow3", alpha = 0.6, color = "snow3") +
+  facet_wrap(~class, nrow = 5, scales = "free") +
+  geom_vline(aes(xintercept=grp.median, colour = "red")) +
+  geom_vline(xintercept=0, linetype = "dashed") +
   theme_bw() +
-  facet_wrap(~class, nrow = 5, scales = "free")
+  theme(legend.position = "none")
 
 class_freq = data.frame(table(all_class_elites_ideologies$class))
 class_freq$percentage = 100*class_freq$Freq/sum(class_freq$Freq)

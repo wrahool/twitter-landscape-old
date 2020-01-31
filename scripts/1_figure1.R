@@ -5,11 +5,17 @@ library(ggrepel)
 elite_df = read.csv("data/weak_elite_ideologies.csv", as.is = T)
 elites = elite_df$username
 
-following_df = read.csv("../echo-chamber-exp/landscape_paper/master_edge_list.csv")
+load("data/master_edge_list.Rdata")
 
 names(following_df) = c("user", "following")
 
-elite_following_df = following_df[following_df$following %in% elites,]
+elite_following_df = following_df[tolower(following_df$following) %in% tolower(elites),]
+
+#top 20 elites
+df <- data.frame(table(following_df$following))
+head(df[order(-df$Freq),],20)
+
+
 elite_following_df = elite_following_df[elite_following_df$user != "Tip",]
 
 elite_following_df$user = as.character(elite_following_df$user)

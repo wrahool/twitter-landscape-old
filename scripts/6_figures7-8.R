@@ -37,47 +37,42 @@ elite_master_tbl <- elite_freq_df %>%
   inner_join(comm_membership) %>%
   inner_join(elite_followers_count)
 
-mu1 <- ddply(elite_master_tbl, "community", summarise, grp.mean=mean(ideology, na.rm = T))
-sd1 <- ddply(elite_master_tbl, "community", summarise, grp.sd=sd(ideology, na.rm = T))
+median1 <- ddply(elite_master_tbl, "community", summarise, grp.median=median(ideology, na.rm = T))
 
-mu2 <- ddply(elite_master_tbl, "community", summarise, grp.mean=mean(corrected_ideology, na.rm = T))
-sd2 <- ddply(elite_master_tbl, "community", summarise, grp.sd=sd(corrected_ideology, na.rm = T))
+median2 <- ddply(elite_master_tbl, "community", summarise, grp.median.w=median(corrected_ideology, na.rm = T))
 
-elite_master_tbl %>%
-  select(community, ideology) %>%
+elite_master_tbl %>% inner_join(median1) -> elite_master_tbl
+elite_master_tbl %>% inner_join(median2) -> elite_master_tbl
+
+median.tbl <- elite_master_tbl %>%
   group_by(community) %>%
-  mutate(mean_id = mean(ideology)) -> c_ideology_with_mu
+  mutate(median.id = median(ideology))
 
-p1 <- ggplot(c_ideology_with_mu, aes(ideology)) +
-  geom_density(fill = "snow3", alpha = 0.6, colour="black") +
+p1 <- ggplot(elite_master_tbl, aes(ideology)) +
+  geom_density(fill = "snow3", alpha = 0.6, colour="snow3") +
   facet_wrap(~community, nrow = 5, scales = "free") + 
   xlim(-3, 3) + 
-  geom_vline(aes(xintercept=mean_id), colour = "red") +
+  geom_vline(aes(xintercept=grp.median, colour = "red")) +
   geom_vline(xintercept=0, linetype = "dashed") +
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
   ) +
-  theme(legend.position = "none") +
-  theme_bw()
+  theme_bw() +
+  theme(legend.position = "none")
 
-elite_master_tbl %>%
-  select(community, corrected_ideology) %>%
-  group_by(community) %>%
-  mutate(mean_id = mean(corrected_ideology)) -> c_corrected_ideology_with_mu
-
-p2 = ggplot(c_corrected_ideology_with_mu, aes(corrected_ideology)) +
-  geom_density(fill = "snow3", alpha = 0.6, colour="black") +
+p2 = ggplot(elite_master_tbl, aes(corrected_ideology)) +
+  geom_density(fill = "snow3", alpha = 0.6, colour="snow3") +
   facet_wrap(~community, nrow = 5, scales = "free") + 
   xlim(-3, 3) + 
-  geom_vline(aes(xintercept=mean_id), color = "red") +
+  geom_vline(aes(xintercept=grp.median.w), color = "red") +
   geom_vline(xintercept=0, linetype = "dashed") +
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
   ) +
-  theme(legend.position = "none") +
-  theme_bw()
+  theme_bw() +
+  theme(legend.position = "none")
 
 # figure 7
 grid.arrange(p1, p2, nrow = 1)

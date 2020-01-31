@@ -43,8 +43,8 @@ p1_withoutNA = ggplot(master_ideology, aes(x=ideology, fill=type)) +
   geom_density(alpha=0.4) +
   geom_vline(data=mu, aes(xintercept=grp.mean, color=type),
              linetype="dashed") +
-  theme(legend.position = "none") +
-  theme_classic()
+  theme_bw() +
+  theme(legend.position = "none")
 
 #recode NAs as 0
 
@@ -81,6 +81,7 @@ p2_withNA = ggplot(master_ideology, aes(x=ideology, fill=type)) +
   geom_density(alpha=0.4) +
   geom_vline(data=mu, aes(xintercept=grp.mean, color=type),
              linetype="dashed") +
+  theme_bw() +
   theme(legend.position = "none")
 
 
