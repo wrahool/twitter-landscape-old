@@ -93,6 +93,24 @@ library(gridExtra)
 #figure 4
 grid.arrange(p3_withoutNA, p4_withNA, nrow = 1)
 
+# for MC article
+
+MC_article_fig2_A = ggplot(elite_freq_viz_long[elite_freq_viz_long$variable == "ideology",],) +
+  geom_density(alpha=0.4, aes(x=value), fill = "orange") +
+  geom_vline(xintercept = mu[mu$variable == "ideology",]$grp.mean, linetype="dashed") +
+  theme_bw() +
+  scale_y_continuous(breaks=seq(0, 10, 2))+
+  ylim(c(0, 10.5))
+
+MC_article_fig2_B = ggplot(elite_freq_viz_long[elite_freq_viz_long$variable == "corrected_ideology",],) +
+  geom_density(alpha=0.4, aes(x=value), fill = "orange") +
+  geom_vline(xintercept = mu[mu$variable == "corrected_ideology",]$grp.mean, linetype="dashed") +
+  theme_bw() +
+  scale_y_continuous(breaks=seq(0, 10, 2))+
+  ylim(c(0, 10.5))
+
+grid.arrange(MC_article_fig2_A, MC_article_fig2_B, nrow = 1)
+
 #distribution within deciles
 
 qs = quantile(elite_freq_df$numberoftweets, probs = seq(0, 1, by = 0.1))
