@@ -96,7 +96,7 @@ grid.arrange(p3_withoutNA, p4_withNA, nrow = 1)
 # for MC article
 
 MC_article_fig2_A = ggplot(elite_freq_viz_long[elite_freq_viz_long$variable == "ideology",],) +
-  geom_density(alpha=0.4, aes(x=value), fill = "orange") +
+  geom_density(alpha=0.4, aes(x=value), fill = "brown") +
   geom_vline(xintercept = mu[mu$variable == "ideology",]$grp.mean, linetype="dashed") +
   theme_bw() +
   scale_y_continuous(breaks=seq(0, 10, 2))+
