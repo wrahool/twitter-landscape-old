@@ -4,7 +4,7 @@ library(gridExtra)
 library(ggplot2)
 library(plyr)
 
-setwd("C:/Users/Subhayan/Documents/Work/twitter-landscape//")
+setwd("C:/Users/Subhayan Mukerjee/Work/twitter-landscape//")
 
 #without NAs
 
