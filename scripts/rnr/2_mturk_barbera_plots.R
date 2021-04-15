@@ -4,6 +4,11 @@ library(tidyverse)
 library(corrr)
 library(cowplot)
 library(broom)
+library(stargazer)
+library(knitr)
+
+exclude_barbera_NAs <- FALSE
+MTurk_NA_threshold <- 100 # set to 100 for all elites
 
 # function to scale a vector to between [0,1]
 scale_01 <- function(x){(x-min(x))/(max(x)-min(x))}
@@ -12,13 +17,27 @@ mturk_tbl <- read_csv("data/mturk_ideologies.csv")
 barbera_tbl <- read_csv("data/weak_elite_ideologies.csv")
 elite_freq_tbl <- read_csv("data/elites_activity.csv")
 
-barbera_tbl <- barbera_tbl %>%
-  mutate(handle = tolower(username)) %>%
-  mutate(recoded_ideology = ifelse(is.na(ideology), 0, ideology)) %>%
-  mutate(recoded_ideology = ifelse(recoded_ideology == -Inf, -3, recoded_ideology)) %>%
-  mutate(recoded_ideology = ifelse(recoded_ideology == Inf, 3, recoded_ideology)) %>%
-  rename(barbera_ideology = recoded_ideology) %>%
-  select(handle, barbera_ideology)
+if(exclude_barbera_NAs) {
+  barbera_tbl <- barbera_tbl %>%
+    mutate(handle = tolower(username)) %>%
+    filter(!is.na(ideology)) %>%
+    rename(recoded_ideology = ideology) %>%
+    mutate(recoded_ideology = ifelse(recoded_ideology == -Inf, -3, recoded_ideology)) %>%
+    mutate(recoded_ideology = ifelse(recoded_ideology == Inf, 3, recoded_ideology)) %>%
+    rename(barbera_ideology = recoded_ideology) %>%
+    select(handle, barbera_ideology)
+} else {
+  barbera_tbl <- barbera_tbl %>%
+    mutate(handle = tolower(username)) %>%
+    mutate(recoded_ideology = ifelse(is.na(ideology), 0, ideology)) %>%
+    mutate(recoded_ideology = ifelse(recoded_ideology == -Inf, -3, recoded_ideology)) %>%
+    mutate(recoded_ideology = ifelse(recoded_ideology == Inf, 3, recoded_ideology)) %>%
+    rename(barbera_ideology = recoded_ideology) %>%
+    select(handle, barbera_ideology)
+}
+
+mturk_tbl <- mturk_tbl %>%
+  filter(NA_percent_attn <= MTurk_NA_threshold)
 
 elite_freq_tbl <- elite_freq_tbl %>%
   mutate(handle = tolower(handle)) %>%
@@ -28,6 +47,7 @@ elite_freq_tbl <- elite_freq_tbl %>%
 full_tbl <- mturk_tbl %>%
   inner_join(barbera_tbl) %>%
   inner_join(elite_freq_tbl)
+
 
 # different kinds of plots with only mturk
 plot1 <- ggplot(full_tbl, aes(mean_rating_all)) +
@@ -93,8 +113,17 @@ unweighted_distribution_plot <- viz_tbl %>%
     geom_density(alpha = 0.4) +
     geom_vline(data=medians, aes(xintercept=type_median, color=type),
              linetype="dashed") +
+  xlim(c(-4,4)) +
   theme_bw() +
   labs(x="unweighted ideology")
+
+# paired wilcox test (are mturk ideologies significantly lesser than barbera ideologies)
+
+wilcoxon_comparison_tbl <- viz_tbl %>%
+  pivot_wider(values_from = ideology, names_from = type) %>%
+  select(barbera, mturk)
+
+wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy()
 
 NA_density <- full_tbl %>%
   select(NA_percent_all) %>%
@@ -129,7 +158,16 @@ weighted_distribution_plot <- viz_tbl %>%
   geom_vline(data=medians, aes(xintercept=type_median, color=type),
              linetype="dashed") +
   theme_bw() +
+  xlim(c(-4,4)) +
   labs(x="weighted ideology")
+
+# paired wilcox test (are mturk ideologies significantly lesser than barbera ideologies)
+
+wilcoxon_comparison_tbl <- viz_tbl %>%
+  pivot_wider(values_from = weighted_ideology, names_from = type) %>%
+  select(barbera, mturk)
+
+wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy()
 
 ########################################
 # within deciles
@@ -165,9 +203,32 @@ decile_plot <- viz_tbl %>%
   ggplot(aes(x=ideology, fill = type)) +
   geom_density(alpha = 0.4) +
   geom_vline(aes(xintercept = decile_median_ideology, colour = type), linetype = "dashed") +
+  xlim(c(-4,4)) +
   facet_wrap(~decile, nrow = 5, scales = "free_y") +
   theme_bw() +
   labs(x="unweighted ideology")
+
+dec_wilcox_tbl <- NULL
+for(dec in unique(viz_tbl$decile)){
+  message(dec)
+  wilcoxon_comparison_tbl <- viz_tbl %>%
+    filter(decile == dec) %>%
+    select(handle, type, ideology) %>%
+    pivot_wider(values_from = ideology, names_from = type) %>%
+    select(barbera, mturk)
+  
+  curr_wilcox_test <- wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy()
+  dec_wilcox_tbl <- dec_wilcox_tbl %>%
+    rbind(c(dec, curr_wilcox_test))
+}
+
+dec_wilcox_tbl <- dec_wilcox_tbl %>%
+  data.frame() %>%
+  rename(decile = 1, v_statistic = 2, p_value = 3) %>%
+  select(-method)
+
+kable(dec_wilcox_tbl, "latex")
+
 
 ########################################
 # within genres unweighted
@@ -233,9 +294,22 @@ unweighted_genre_plot <- viz_tbl %>%
   ggplot(aes(x=ideology, fill = type)) +
   geom_density(alpha = 0.4) +
   geom_vline(aes(xintercept = class_median_ideology, colour = type), linetype = "dashed") +
+  xlim(c(-4,4))+
   facet_wrap(~genre, nrow = 5, scales = "free_y") +
   theme_bw() +
   labs(x="unweighted ideology")
+
+for(g in unique(viz_tbl$genre)){
+  message(g)
+  wilcoxon_comparison_tbl <- viz_tbl %>%
+    filter(genre == g) %>%
+    select(handle, type, ideology) %>%
+    pivot_wider(values_from = ideology, names_from = type) %>%
+    select(barbera, mturk)
+  
+  wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy() %>% print()
+}
+
 
 # within genres weighted
 
@@ -249,15 +323,40 @@ viz_tbl <- all_class_elites_ideologies %>%
   select(handle, genre, weighted_mturk_ideology, weighted_barbera_ideology) %>%
   rename(mturk = weighted_mturk_ideology,
          barbera = weighted_barbera_ideology) %>%
-  pivot_longer(cols = c(3,4), names_to = "type", values_to = "ideology") %>%
+  pivot_longer(cols = c(3,4), names_to = "type", values_to = "weighted_ideology") %>%
   inner_join(weighted_medians, by = c("type", "genre"))
 
 weighted_genre_plot <- viz_tbl %>%
-  ggplot(aes(x=ideology, fill = type)) +
+  ggplot(aes(x=weighted_ideology, fill = type)) +
   geom_density(alpha = 0.4) +
   geom_vline(aes(xintercept = class_median_ideology, colour = type), linetype = "dashed") +
+  xlim(c(-4,4))+
   facet_wrap(~genre, nrow = 5, scales = "free_y") +
   theme_bw() +
   labs(x="weighted ideology")
+
+genre_wilcox_tbl <- NULL
+for(g in unique(viz_tbl$genre)){
+  message(g)
+  wilcoxon_comparison_tbl <- viz_tbl %>%
+    filter(genre == g) %>%
+    select(handle, type, weighted_ideology) %>%
+    pivot_wider(values_from = weighted_ideology, names_from = type) %>%
+    select(barbera, mturk)
+  
+  curr_wilcox_tbl <- wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>%
+    tidy()
+  
+  genre_wilcox_tbl <- genre_wilcox_tbl %>%
+    rbind(c(g, curr_wilcox_tbl))
+}
+
+genre_wilcox_tbl <- genre_wilcox_tbl %>%
+  data.frame() %>%
+  rename(genre = 1, v_statistic = 2, p_value = 3) %>%
+  select(genre, v_statistic, p_value, alternative)
+
+kable(genre_wilcox_tbl, "latex")
+stargazer(genre_wilcox_tbl)
 
 all_plots <- ls()[grep("plot", ls())]
