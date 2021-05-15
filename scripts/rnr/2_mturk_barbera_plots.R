@@ -1,4 +1,4 @@
-setwd("C:/Users/Subhayan Mukerjee/Work/twitter-landscape/")
+setwd("C:/Users/Subhayan/Work/twitter-landscape/")
 
 library(tidyverse)
 library(corrr)
@@ -102,7 +102,8 @@ viz_tbl <- full_tbl %>%
   select(-mean_rating_attn) %>%
   rename(barbera = barbera_ideology,
          mturk = mturk_ideology_shifted) %>%
-  pivot_longer(cols = c(2,3), names_to = "type", values_to = "ideology")
+  pivot_longer(cols = c(2,3), names_to = "type", values_to = "ideology") %>%
+  mutate(type = ifelse(type == "barbera", "ideal points", "perceived ideologies")) 
 
 medians <- viz_tbl %>%
   group_by(type) %>%
@@ -114,16 +115,27 @@ unweighted_distribution_plot <- viz_tbl %>%
     geom_vline(data=medians, aes(xintercept=type_median, color=type),
              linetype="dashed") +
   xlim(c(-4,4)) +
+  labs(x="unweighted ideology",
+       fill = "ideology type",
+       color = "ideology type") + 
   theme_bw() +
-  labs(x="unweighted ideology")
+  theme(legend.position = c(0.15, 0.85),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black"))
+
+ggsave(file="figures/fig2.svg", plot=unweighted_distribution_plot, width=8, height=6)
 
 # paired wilcox test (are mturk ideologies significantly lesser than barbera ideologies)
 
 wilcoxon_comparison_tbl <- viz_tbl %>%
   pivot_wider(values_from = ideology, names_from = type) %>%
-  select(barbera, mturk)
+  select(`ideal points`, `perceived ideologies`)
 
-wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy()
+wilcox.test(wilcoxon_comparison_tbl$`perceived ideologies`,
+            wilcoxon_comparison_tbl$`ideal points`, paired = TRUE,
+            alternative = "less") %>% tidy()
 
 NA_density <- full_tbl %>%
   select(NA_percent_all) %>%
@@ -146,7 +158,8 @@ viz_tbl <- full_tbl %>%
   select(-mean_rating_attn, -barbera_ideology, -freq_scaled) %>%
   rename(barbera = weighted_barbera_ideology,
          mturk = weighted_mturk_ideology_shifted) %>%
-  pivot_longer(cols = c(2,3), names_to = "type", values_to = "weighted_ideology")
+  pivot_longer(cols = c(2,3), names_to = "type", values_to = "weighted_ideology") %>%
+  mutate(type = ifelse(type == "barbera", "ideal points", "perceived ideologies"))
 
 medians <- viz_tbl %>%
   group_by(type) %>%
@@ -159,15 +172,24 @@ weighted_distribution_plot <- viz_tbl %>%
              linetype="dashed") +
   theme_bw() +
   xlim(c(-4,4)) +
-  labs(x="weighted ideology")
+  labs(x="weighted ideology",
+       fill = "ideology type",
+       color = "ideology type")+
+  theme(legend.position = c(0.15, 0.85),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black"))
+
+ggsave(file="figures/fig3.svg", plot=weighted_distribution_plot, width=8, height=6)
 
 # paired wilcox test (are mturk ideologies significantly lesser than barbera ideologies)
 
 wilcoxon_comparison_tbl <- viz_tbl %>%
   pivot_wider(values_from = weighted_ideology, names_from = type) %>%
-  select(barbera, mturk)
+  select(`ideal points`, `perceived ideologies`)
 
-wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy()
+wilcox.test(wilcoxon_comparison_tbl$`perceived ideologies`, wilcoxon_comparison_tbl$`ideal points`, paired = TRUE, alternative = "less") %>% tidy()
 
 ########################################
 # within deciles
@@ -189,7 +211,8 @@ medians <- all_decile_tbl %>%
   summarize(barbera = median(barbera_ideology),
             mturk = median(mean_rating_attn-4)) %>%
   ungroup() %>%
-  pivot_longer(cols = c(2,3), names_to = "type", values_to = "decile_median_ideology")
+  pivot_longer(cols = c(2,3), names_to = "type", values_to = "decile_median_ideology") %>%
+  mutate(type = ifelse(type == "barbera", "ideal points", "perceived ideologies"))
 
 viz_tbl <- all_decile_tbl %>%
   select(handle, decile, mean_rating_attn, barbera_ideology) %>%
@@ -197,16 +220,21 @@ viz_tbl <- all_decile_tbl %>%
   rename(mturk = mean_rating_attn,
          barbera = barbera_ideology) %>%
   pivot_longer(cols = c(3,4), names_to = "type", values_to = "ideology") %>%
+  mutate(type = ifelse(type == "barbera", "ideal points", "perceived ideologies")) %>%
   inner_join(medians, by = c("decile", "type"))
 
-decile_plot <- viz_tbl %>%
-  ggplot(aes(x=ideology, fill = type)) +
-  geom_density(alpha = 0.4) +
-  geom_vline(aes(xintercept = decile_median_ideology, colour = type), linetype = "dashed") +
-  xlim(c(-4,4)) +
-  facet_wrap(~decile, nrow = 5, scales = "free_y") +
+decile_plots <- ggplot(viz_tbl, aes(x = ideology, y = as.factor(decile),
+                                    fill = type)) +
+  stat_density_ridges(quantile_lines = TRUE, quantiles = 2) +
+  geom_vline(xintercept=0, linetype="dashed") +
+  labs(x="ideology", y="decile") +
+  facet_wrap(~type) +
   theme_bw() +
-  labs(x="unweighted ideology")
+  theme(legend.position = "none")+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
+
+ggsave(file="figures/fig4.svg", plot=decile_plots, width=8, height=6)
 
 dec_wilcox_tbl <- NULL
 for(dec in unique(viz_tbl$decile)){
@@ -215,9 +243,9 @@ for(dec in unique(viz_tbl$decile)){
     filter(decile == dec) %>%
     select(handle, type, ideology) %>%
     pivot_wider(values_from = ideology, names_from = type) %>%
-    select(barbera, mturk)
+    select(`ideal points`, `perceived ideologies`)
   
-  curr_wilcox_test <- wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy()
+  curr_wilcox_test <- wilcox.test(wilcoxon_comparison_tbl$`perceived ideologies`, wilcoxon_comparison_tbl$`ideal points`, paired = TRUE, alternative = "less") %>% tidy()
   dec_wilcox_tbl <- dec_wilcox_tbl %>%
     rbind(c(dec, curr_wilcox_test))
 }
@@ -228,7 +256,6 @@ dec_wilcox_tbl <- dec_wilcox_tbl %>%
   select(-method)
 
 kable(dec_wilcox_tbl, "latex")
-
 
 ########################################
 # within genres unweighted
@@ -256,7 +283,7 @@ for(class in classes) {
   class_elites_ideology <- full_tbl %>%
     select(handle, mean_rating_attn, barbera_ideology, freq_scaled) %>%
     filter(handle %in% class_elites) %>%
-    mutate(genre = gsub(pattern = " ", "", class),
+    mutate(genre = class,
            mturk_ideology = mean_rating_attn - 4,
            weighted_mturk_ideology = mturk_ideology * freq_scaled,
            weighted_barbera_ideology = barbera_ideology * freq_scaled) %>%
@@ -288,7 +315,8 @@ viz_tbl <- all_class_elites_ideologies %>%
   rename(mturk = mturk_ideology,
          barbera = barbera_ideology) %>%
   pivot_longer(cols = c(3,4), names_to = "type", values_to = "ideology") %>%
-  inner_join(unweighted_medians, by = c("type", "genre"))
+  inner_join(unweighted_medians, by = c("type", "genre")) %>%
+  mutate(type = ifelse(type == "barbera", "ideal points", "perceived ideologies"))
   
 unweighted_genre_plot <- viz_tbl %>%
   ggplot(aes(x=ideology, fill = type)) +
@@ -298,6 +326,16 @@ unweighted_genre_plot <- viz_tbl %>%
   facet_wrap(~genre, nrow = 5, scales = "free_y") +
   theme_bw() +
   labs(x="unweighted ideology")
+
+unweighted_genre_ridgeplots <- ggplot(viz_tbl, aes(x=ideology, y = genre, fill = type))+
+  stat_density_ridges(quantile_lines = TRUE, quantiles = 2) +
+  geom_vline(xintercept=0, linetype="dashed") +
+  labs(x = "ideology", y = "genre") +
+  facet_wrap(~type)+
+  theme_bw()+
+  theme(legend.position = "none") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
 
 for(g in unique(viz_tbl$genre)){
   message(g)
@@ -324,7 +362,8 @@ viz_tbl <- all_class_elites_ideologies %>%
   rename(mturk = weighted_mturk_ideology,
          barbera = weighted_barbera_ideology) %>%
   pivot_longer(cols = c(3,4), names_to = "type", values_to = "weighted_ideology") %>%
-  inner_join(weighted_medians, by = c("type", "genre"))
+  inner_join(weighted_medians, by = c("type", "genre")) %>%
+  mutate(type = ifelse(type == "barbera", "ideal points", "perceived ideologies"))
 
 weighted_genre_plot <- viz_tbl %>%
   ggplot(aes(x=weighted_ideology, fill = type)) +
@@ -334,6 +373,21 @@ weighted_genre_plot <- viz_tbl %>%
   facet_wrap(~genre, nrow = 5, scales = "free_y") +
   theme_bw() +
   labs(x="weighted ideology")
+
+weighted_genre_ridgeplots <- ggplot(viz_tbl, aes(x=weighted_ideology, y = genre, fill = type))+
+  stat_density_ridges(quantile_lines = TRUE, quantiles = 2) +
+  geom_vline(xintercept=0, linetype="dashed") +
+  labs(x = "ideology", y = "genre") +
+  facet_wrap(~type)+
+  theme_bw()+
+  theme(legend.position = "none") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
+
+genre_ridgeplots <- plot_grid(plotlist = list(unweighted_genre_ridgeplots, weighted_genre_ridgeplots),
+                              labels = "AUTO", ncol = 1, align = "v")
+
+ggsave(file="figures/fig5.svg", plot=genre_ridgeplots, width=8, height=12)
 
 genre_wilcox_tbl <- NULL
 for(g in unique(viz_tbl$genre)){
