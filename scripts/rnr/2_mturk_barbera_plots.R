@@ -6,6 +6,7 @@ library(cowplot)
 library(broom)
 library(stargazer)
 library(knitr)
+library(ggridges)
 
 exclude_barbera_NAs <- FALSE
 MTurk_NA_threshold <- 100 # set to 100 for all elites
@@ -119,9 +120,11 @@ unweighted_distribution_plot <- viz_tbl %>%
        fill = "ideology type",
        color = "ideology type") + 
   theme_bw() +
-  theme(legend.position = c(0.15, 0.85),
+  theme(legend.position = c(0.18, 0.85),
         axis.text=element_text(size=12),
         axis.title=element_text(size=14),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
         legend.background = element_blank(),
         legend.box.background = element_rect(colour = "black"))
 
@@ -175,9 +178,11 @@ weighted_distribution_plot <- viz_tbl %>%
   labs(x="weighted ideology",
        fill = "ideology type",
        color = "ideology type")+
-  theme(legend.position = c(0.15, 0.85),
+  theme(legend.position = c(0.18, 0.85),
         axis.text=element_text(size=12),
         axis.title=element_text(size=14),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
         legend.background = element_blank(),
         legend.box.background = element_rect(colour = "black"))
 
@@ -230,9 +235,10 @@ decile_plots <- ggplot(viz_tbl, aes(x = ideology, y = as.factor(decile),
   labs(x="ideology", y="decile") +
   facet_wrap(~type) +
   theme_bw() +
-  theme(legend.position = "none")+
-  theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=14))
+  theme(legend.position = "none",
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        strip.text.x = element_text(size = 12))
 
 ggsave(file="figures/fig4.svg", plot=decile_plots, width=8, height=6)
 
@@ -333,19 +339,29 @@ unweighted_genre_ridgeplots <- ggplot(viz_tbl, aes(x=ideology, y = genre, fill =
   labs(x = "ideology", y = "genre") +
   facet_wrap(~type)+
   theme_bw()+
-  theme(legend.position = "none") +
-  theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=14))
+  theme(legend.position = "none",
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        strip.text.x = element_text(size = 12))
 
+ggsave(file="figures/FigA1.svg", plot=unweighted_genre_ridgeplots, width=8, height=6)
+
+genre_wilcox_tbl <- NULL
 for(g in unique(viz_tbl$genre)){
   message(g)
   wilcoxon_comparison_tbl <- viz_tbl %>%
     filter(genre == g) %>%
     select(handle, type, ideology) %>%
     pivot_wider(values_from = ideology, names_from = type) %>%
-    select(barbera, mturk)
+    select(`ideal points`, `perceived ideologies`)
   
-  wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>% tidy() %>% print()
+  curr_wilcox_tbl <- wilcox.test(wilcoxon_comparison_tbl$`perceived ideologies`,
+                                  wilcoxon_comparison_tbl$`ideal points`,
+                                  paired = TRUE, alternative = "less") %>%
+    tidy()
+  
+  genre_wilcox_tbl <- genre_wilcox_tbl %>%
+    rbind(c(g, curr_wilcox_tbl))
 }
 
 
@@ -382,12 +398,15 @@ weighted_genre_ridgeplots <- ggplot(viz_tbl, aes(x=weighted_ideology, y = genre,
   theme_bw()+
   theme(legend.position = "none") +
   theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=14))
+        axis.title=element_text(size=14),
+        strip.text.x = element_text(size = 12))
+
+ggsave(file="figures/fig5.svg", plot=weighted_genre_ridgeplots, width=8, height=6)
 
 genre_ridgeplots <- plot_grid(plotlist = list(unweighted_genre_ridgeplots, weighted_genre_ridgeplots),
                               labels = "AUTO", ncol = 1, align = "v")
 
-ggsave(file="figures/fig5.svg", plot=genre_ridgeplots, width=8, height=12)
+ggsave(file="figures/fig5extra.svg", plot=genre_ridgeplots, width=8, height=12)
 
 genre_wilcox_tbl <- NULL
 for(g in unique(viz_tbl$genre)){
@@ -396,9 +415,9 @@ for(g in unique(viz_tbl$genre)){
     filter(genre == g) %>%
     select(handle, type, weighted_ideology) %>%
     pivot_wider(values_from = weighted_ideology, names_from = type) %>%
-    select(barbera, mturk)
+    select(`ideal points`, `perceived ideologies`)
   
-  curr_wilcox_tbl <- wilcox.test(wilcoxon_comparison_tbl$mturk, wilcoxon_comparison_tbl$barbera, paired = TRUE, alternative = "less") %>%
+  curr_wilcox_tbl <- wilcox.test(wilcoxon_comparison_tbl$`perceived ideologies`, wilcoxon_comparison_tbl$`ideal points`, paired = TRUE, alternative = "less") %>%
     tidy()
   
   genre_wilcox_tbl <- genre_wilcox_tbl %>%

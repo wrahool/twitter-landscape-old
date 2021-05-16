@@ -102,13 +102,17 @@ fig1a_plot <- all_genre_info %>%
                   size = 4.6) +
   labs(x="# unique followers", y="# tweets", size="# elites", fill = "political relevance") +
   theme_bw() +
-  theme(axis.text=element_text(size=8),
-        axis.title=element_text(size=9),
-        legend.position = c(0.25, 0.75),
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        legend.position = c(0.23, 0.74),
         legend.box = "horizontal",
         legend.text = element_text(size=8),
+        legend.title = element_text(size = 9), 
         legend.background = element_blank(),
-        legend.box.background = element_rect(colour = "black"))
+        legend.box.background = element_rect(colour = "black"),
+        legend.key.size = unit(1, "lines")) +
+  guides(shape = guide_legend(override.aes = list(size = 0.5))) +
+  guides(fill = guide_colourbar(barwidth = 1, barheight = 10))
 
 
 all_class_elites_relevance <- NULL
@@ -129,12 +133,13 @@ fig1b_plot <- ggplot(all_class_elites_relevance) +
   stat_density_ridges(aes(x = relevance_kw, y = class), fill = "skyblue", quantile_lines = TRUE, quantiles = 2) +
   labs(x="political relevance score", y="genre") +
   theme_bw() +
-  theme(axis.text=element_text(size=8),
-        axis.title=element_text(size=9))
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
 
 
 fig1 <- plot_grid(plotlist = list(fig1a_plot, fig1b_plot), ncol = 2,
                   align = "h", axis = "b", rel_widths = c(1.5, 1),
                   labels = "AUTO")
 
-ggsave(file="figures/fig1.svg", plot=fig1, width=12, height=6)
+ggsave(file="figures/fig1.svg", plot=fig1, width=10, height=5.2)
+ggsave(file="figures/fig1x.jpg", device = "jpeg", plot=fig1, width=10, height=5.2)
