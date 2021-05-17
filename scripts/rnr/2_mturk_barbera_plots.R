@@ -95,6 +95,9 @@ cor.test(compare_tbl$scaled_mturk_ideology_attn, compare_tbl$scaled_barbera_ideo
 
 ###
 
+## for all visualizations from here on, we only use mean_rating_attn,
+# ie. we remove all those who did not pass the attention check
+
 # compare mturk vs barbera ideology
 
 viz_tbl <- full_tbl %>%
@@ -433,3 +436,60 @@ kable(genre_wilcox_tbl, "latex")
 stargazer(genre_wilcox_tbl)
 
 all_plots <- ls()[grep("plot", ls())]
+
+# for appendix
+# adding trump and bernie in the ideal points distribution
+
+barbera_tbl_TB <- barbera_tbl %>%
+  filter(handle %in% c("realdonaldtrump", "berniesanders", unique(mturk_tbl$handle))) %>%
+  mutate(`ideal points with Trump and Bernie` = barbera_ideology,
+          barbera_ideology = ifelse(handle %in% c("realdonaldtrump", "berniesanders"), NA, barbera_ideology)) %>%
+  rename(`ideal points` = barbera_ideology) %>%
+  pivot_longer(cols = c(2,3), names_to = "type", values_to = "ideology")
+
+trump_bernie_comparison <- barbera_tbl_TB %>%
+  ggplot() +
+  geom_density(aes(x=ideology)) +
+  # geom_vline(data=medians, aes(xintercept=type_median, color=type),
+  #           linetype="dashed") +
+  facet_wrap(~type) +
+  theme_bw() +
+  xlim(c(-4,4)) +
+  labs(x="weighted ideology",
+       fill = "ideology type",
+       color = "ideology type")+
+  theme(legend.position = c(0.18, 0.85),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black"))
+
+# mturkers with Twitter vs those without
+twtr_tbl <- mturk_tbl %>%
+  select(handle, mean_rating_attn, mean_rating_attn_twtr) %>%
+  pivot_longer(cols = c(2,3), names_to = "rated by", values_to = "perceived ideologies") %>%
+  mutate(`rated by` = ifelse(`rated by` == "mean_rating_attn", "all turkers", "turkers with Twitter"))
+
+medians <- twtr_tbl %>%
+  group_by(`rated by`) %>%
+  summarise(type_median = median(`perceived ideologies`-4, na.rm = T))
+
+twtr_comparison <- twtr_tbl %>%
+  ggplot() +
+  geom_density(aes(x=`perceived ideologies` -4, fill = `rated by`), alpha = 0.4) +
+  geom_vline(data=medians, aes(xintercept=type_median, color=`rated by`),
+             linetype="dashed") +
+  theme_bw() +
+  #xlim(c(-4,4)) +
+  labs(x="perceived ideologies",
+       fill = "rated by",
+       color = "rated by") +
+  theme(legend.position = c(0.14, 0.85),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black"))

@@ -1,4 +1,4 @@
-setwd("C:/Users/Subhayan Mukerjee/Work/twitter-landscape/")
+setwd("C:/Users/Subhayan/Work/twitter-landscape/")
 
 library(tidyverse)
 library(corrr)
